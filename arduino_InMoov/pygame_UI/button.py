@@ -34,5 +34,5 @@ class Button():
         # 4. Process the mouse click (This will now work!)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(mouse_pos):
-                print(self.name)
                 func(param)
+                print("jsdopfnsdfapsdfoahfewoweifn")

@@ -1,5 +1,6 @@
 from pygame_UI import button
 from head_manual import HeadManual
+from head_lookat import HeadLookAt
 from enum import Enum
 import pyfirmata2
 import pygame
@@ -7,34 +8,31 @@ import time
 import sys
 
 manual_button = button.Button("MANUAL", 0, 0, 50, 50, (0, 0, 255), (100, 100, 255))
-look_at_button = button.Button("LOOK AT", 100, 100, 50, 50, (0, 0, 255), (100, 100, 255))
+look_at_button = button.Button("LOOK AT", 75, 0, 50, 50, (0, 0, 255), (100, 100, 255))
 
-class CURRENT_WINDOW(Enum):
-    MANUAL = 1, 
+class WINDOW(Enum):
+    MANUAL = 1
     LOOKAT = 2
-current_window = CURRENT_WINDOW.MANUAL
 
 def change_window(state):
+    global current_window
     current_window = state
+current_window = WINDOW.MANUAL
 
-board = pyfirmata2.Arduino('COM4')
-
-HORIZONTAL_PIN = 11
-VERTICAL_PIN = 12
+board = pyfirmata2.Arduino('COM3')
 
 horizontal = board.get_pin('d:11:s')
 vertical = board.get_pin('d:12:s')
+mouth = board.get_pin('d:13:s')
 
-manual_window = HeadManual(horizontal, vertical)
+manual_window = HeadManual(horizontal, vertical, mouth)
+lookat_window = HeadLookAt(horizontal, vertical)
 
 pygame.init()
 screen = pygame.display.set_mode((600, 400))
 clock = pygame.time.Clock()
 
 running = True
-
-has_sliders = False
-sliders = []
 
 horizontal.write(90)
 time.sleep(2)
@@ -48,42 +46,20 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if has_sliders:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                for slider in sliders:
-                    if slider.x <= pygame.mouse.get_pos()[0] <= slider.x + slider.width and slider.y <= pygame.mouse.get_pos()[1] <= slider.y + slider.height:
-                        slider.is_dragging = True
+        if current_window == WINDOW.MANUAL:
+            manual_window.handle_event(event)
 
-            if event.type == pygame.MOUSEBUTTONUP:
-                for slider in sliders:
-                    slider.is_dragging = False
-                    match slider.name:
-                        case "horizontal head mech":
-                            horizontal.write(slider.get_value())
-                            time.sleep(1)
-                        case "vertical head mech":
-                            vertical.write(slider.get_value())
-                            print("twin v")
-                        case _:
-                            print("twinington thiers")
-                    print(slider.get_value())
+        if current_window == WINDOW.LOOKAT:
+            lookat_window.handle_event()
 
-            if event.type == pygame.MOUSEMOTION:
-                for slider in sliders:
-                    if slider.is_dragging:
-                        mouse_x = pygame.mouse.get_pos()[0]
-                        slider.update(mouse_x)
-
-        manual_button.handle_event(event, change_window, CURRENT_WINDOW.MANUAL)
-        look_at_button.handle_event(event, change_window, CURRENT_WINDOW.LOOKAT)
+        manual_button.handle_event(event, change_window, WINDOW.MANUAL)
+        look_at_button.handle_event(event, change_window, WINDOW.LOOKAT)
 
     match current_window:
-        case CURRENT_WINDOW.MANUAL:
+        case WINDOW.MANUAL:
             manual_window.draw(screen)
-            has_sliders = True
-            sliders = manual_window.sliders
-        case CURRENT_WINDOW.LOOKAT:
-            pass
+        case WINDOW.LOOKAT:
+            lookat_window.draw(screen)
         case _:
             print("failed bro")
 
